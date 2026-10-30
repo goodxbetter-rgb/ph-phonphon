@@ -1,25 +1,99 @@
-# UI Enhancements
 
-A small SillyTavern extension that adds a Quick Insert Toolbar above the message input.
+# Character Phone System (CPS)
 
-## Buttons
+A phone interface extension for SillyTavern roleplay.
 
-- `""` wraps selected text in quotation marks. With no selection, inserts `""` and places the caret between them.
-- `**` wraps selected text in Markdown bold markers. With no selection, inserts `****` and places the caret between the markers.
-- `(OOC:)` wraps selected text as `(OOC: selected text)`. With no selection, inserts `(OOC: )` and places the caret after the colon and space.
+Character Phone System adds an interactive phone window to SillyTavern, allowing users to interact with characters through a separate mobile-style interface.
 
-When text is selected, the wrapped text remains selected for convenient editing.
+## Features
 
-## Install
+### Phase 1
 
-1. Extract this folder into your SillyTavern user extensions directory:
-   `data/<your-user-folder>/extensions/ui-enhancements/`
-2. Make sure `manifest.json`, `index.js`, and `style.css` are directly inside `ui-enhancements`.
-3. Restart or refresh SillyTavern.
-4. Enable **UI Enhancements** under Extensions if it is not enabled automatically.
+- Private Messages (1:1)
+- Simulated Phone Calls
+- Incoming and Outgoing Call Interfaces
+- Persistent Conversation History
+- Message Status (Sent / Delivered / Read)
+- Activity Summary Bridge
 
-## Notes
+### Interface
 
-- This extension only edits the current message input. It does not send messages.
-- It dispatches normal `input` and `change` events so the chat input can update its state.
-- The toolbar targets SillyTavern's `#send_textarea` input.
+- Floating Phone Window
+- Draggable Window
+- Resizable Window
+- Glassmorphism Design
+- Separate Messages and Calls Pages
+- Persistent Window Position
+
+## Installation
+
+1. Open your SillyTavern installation folder.
+2. Navigate to:
+
+   `public/scripts/extensions/third-party/`
+
+3. Clone or download this repository into that directory.
+
+   The resulting folder structure should look like this:
+
+   ```text
+   third-party/
+   └── Character-Phone-System/
+       ├── manifest.json
+       ├── index.js
+       ├── style.css
+       └── README.md
+   ```
+
+4. Restart SillyTavern or reload the page.
+5. Open the Extensions menu and check whether Character Phone System has loaded.
+
+## Usage
+
+1. Open a character chat.
+2. Find the floating phone icon.
+3. Click the icon to open the phone interface.
+4. Use the bottom navigation to switch between Messages and Calls.
+
+## Project Structure
+
+```text
+Character-Phone-System/
+├── manifest.json
+├── index.js
+├── style.css
+└── README.md
+```
+
+## Development Roadmap
+
+### Phase 1 — Core Phone System
+
+- [x] Floating Phone Interface
+- [x] Draggable Window
+- [x] Resizable Window
+- [x] Messages Interface
+- [x] Calls Interface
+- [ ] Private Messaging Engine
+- [ ] NPC-Initiated Messages
+- [ ] Incoming Call Events
+- [ ] Outgoing Call System
+- [ ] Conversation Persistence
+- [ ] Message Status Management
+- [ ] Summary Bridge
+
+### Future Development
+
+- NPC-to-NPC Communication
+- Advanced Contact Management
+- Relationship-Based Communication Rules
+
+## Compatibility
+
+Designed for SillyTavern.
+
+Compatibility with specific SillyTavern versions and APIs must be tested before release.
+
+## License
+
+MIT License
