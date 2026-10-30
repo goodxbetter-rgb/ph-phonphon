@@ -1,13 +1,9 @@
 {
-  "display_name": "UI Enhancements",
+  "display_name": "Character Phone System",
   "loading_order": 20,
-  "requires": [],
-  "optional": [],
   "js": "index.js",
   "css": "style.css",
-  "author": "OpenAI",
-  "version": "1.0.0",
-  "home page": "",
-  "auto_update": false,
-  "minimum_client_version": "1.12.0"
+  "author": "CPS",
+  "version": "0.1.0",
+  "auto_update": true
 }
