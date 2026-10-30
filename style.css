@@ -499,8 +499,14 @@
         min-height: 0;
     }
 
-    .cps-launcher {
-        right: 15px;
-        bottom: 15px;
-    }
+
+.cps-launcher {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: grab;
+}
+
+.cps-launcher:active {
+    cursor: grabbing;
 }
