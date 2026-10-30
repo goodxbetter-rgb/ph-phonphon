@@ -11,6 +11,10 @@
     let isMinimized = false;
     let dragState = null;
 
+    // Launcher dragging
+    let launcherDragState = null;
+    let launcherWasDragged = false;
+
     const TABS = {
         messages: {
             label: 'ข้อความ',
@@ -46,6 +50,10 @@
         return 'ไม่ได้เลือกตัวละคร';
     }
 
+    // =========================================
+    // Floating Launcher
+    // =========================================
+
     function createLauncher() {
         if (launcher) return;
 
@@ -56,10 +64,158 @@
         launcher.textContent = '☎';
         launcher.title = 'เปิด Character Phone System';
 
-        launcher.addEventListener('click', togglePhone);
+        // เริ่มลาก
+        launcher.addEventListener('pointerdown', event => {
+            if (event.button !== 0) return;
+
+            const rect = launcher.getBoundingClientRect();
+
+            launcherDragState = {
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                left: rect.left,
+                top: rect.top,
+            };
+
+            launcherWasDragged = false;
+
+            launcher.setPointerCapture(event.pointerId);
+        });
+
+        // เคลื่อนย้ายปุ่ม
+        launcher.addEventListener('pointermove', event => {
+            if (!launcherDragState) return;
+            if (event.pointerId !== launcherDragState.pointerId) return;
+
+            const dx = event.clientX - launcherDragState.startX;
+            const dy = event.clientY - launcherDragState.startY;
+
+            if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+                launcherWasDragged = true;
+            }
+
+            if (!launcherWasDragged) return;
+
+            const maxLeft = window.innerWidth - launcher.offsetWidth;
+            const maxTop = window.innerHeight - launcher.offsetHeight;
+
+            const left = Math.max(
+                0,
+                Math.min(maxLeft, launcherDragState.left + dx)
+            );
+
+            const top = Math.max(
+                0,
+                Math.min(maxTop, launcherDragState.top + dy)
+            );
+
+            launcher.style.left = `${left}px`;
+            launcher.style.top = `${top}px`;
+            launcher.style.right = 'auto';
+            launcher.style.bottom = 'auto';
+        });
+
+        // จบการลาก
+        launcher.addEventListener('pointerup', event => {
+            if (!launcherDragState) return;
+            if (event.pointerId !== launcherDragState.pointerId) return;
+
+            if (launcherWasDragged) {
+                saveLauncherPosition();
+            }
+
+            launcherDragState = null;
+        });
+
+        launcher.addEventListener('pointercancel', () => {
+            launcherDragState = null;
+            launcherWasDragged = false;
+        });
+
+        // คลิกเปิดมือถือ แต่ไม่เปิดเมื่อเพิ่งลากปุ่ม
+        launcher.addEventListener('click', event => {
+            if (launcherWasDragged) {
+                event.preventDefault();
+                event.stopPropagation();
+                launcherWasDragged = false;
+                return;
+            }
+
+            togglePhone();
+        });
 
         document.body.appendChild(launcher);
+
+        restoreLauncherPosition();
     }
+
+    function saveLauncherPosition() {
+        if (!launcher) return;
+
+        const rect = launcher.getBoundingClientRect();
+
+        try {
+            localStorage.setItem(
+                `${EXTENSION_ID}-launcher-position`,
+                JSON.stringify({
+                    left: rect.left,
+                    top: rect.top,
+                })
+            );
+        } catch (error) {
+            console.warn(`[${MODULE_NAME}] Cannot save launcher position.`, error);
+        }
+    }
+
+    function restoreLauncherPosition() {
+        if (!launcher) return;
+
+        try {
+            const saved = localStorage.getItem(
+                `${EXTENSION_ID}-launcher-position`
+            );
+
+            if (!saved) return;
+
+            const position = JSON.parse(saved);
+
+            if (
+                typeof position.left !== 'number' ||
+                typeof position.top !== 'number'
+            ) {
+                return;
+            }
+
+            const left = Math.max(
+                0,
+                Math.min(
+                    position.left,
+                    window.innerWidth - launcher.offsetWidth
+                )
+            );
+
+            const top = Math.max(
+                0,
+                Math.min(
+                    position.top,
+                    window.innerHeight - launcher.offsetHeight
+                )
+            );
+
+            launcher.style.left = `${left}px`;
+            launcher.style.top = `${top}px`;
+            launcher.style.right = 'auto';
+            launcher.style.bottom = 'auto';
+
+        } catch (error) {
+            console.warn(`[${MODULE_NAME}] Cannot restore launcher position.`, error);
+        }
+    }
+
+    // =========================================
+    // Phone Window
+    // =========================================
 
     function createPhone() {
         if (phoneWindow) return;
@@ -189,6 +345,10 @@
         closePhone();
     }
 
+    // =========================================
+    // Navigation
+    // =========================================
+
     function switchTab(tab) {
         if (!Object.hasOwn(TABS, tab)) return;
 
@@ -260,6 +420,10 @@
         container.appendChild(emptyState);
     }
 
+    // =========================================
+    // Clock
+    // =========================================
+
     function updateClock() {
         if (!phoneWindow) return;
 
@@ -273,6 +437,10 @@
             minute: '2-digit',
         });
     }
+
+    // =========================================
+    // Phone Window Dragging
+    // =========================================
 
     function setupDragging() {
         const header = phoneWindow.querySelector('.cps-header');
@@ -328,6 +496,10 @@
         header.addEventListener('pointercancel', stopDragging);
     }
 
+    // =========================================
+    // Phone Window Resizing
+    // =========================================
+
     function setupResizing() {
         const handle = phoneWindow.querySelector('.cps-resize-handle');
 
@@ -376,6 +548,10 @@
         handle.addEventListener('pointerup', stopResizing);
         handle.addEventListener('pointercancel', stopResizing);
     }
+
+    // =========================================
+    // Save / Restore Phone Position
+    // =========================================
 
     function saveWindowPosition() {
         if (!phoneWindow) return;
@@ -436,6 +612,10 @@
             console.warn(`[${MODULE_NAME}] Cannot restore window position.`, error);
         }
     }
+
+    // =========================================
+    // SillyTavern Events
+    // =========================================
 
     function handleChatChanged() {
         if (phoneWindow) {
