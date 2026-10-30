@@ -510,3 +510,36 @@
 .cps-launcher:active {
     cursor: grabbing;
 }
+
+/* =========================================
+   Phone View Switcher
+   ========================================= */
+
+.cps-phone-switcher {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px 14px;
+}
+
+.cps-phone-switch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 10px 6px;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,0.25));
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+}
+
+.cps-phone-switch:hover {
+    opacity: 1 !important;
+}
+
+.cps-phone-switch.cps-active {
+    font-weight: 700;
+}
