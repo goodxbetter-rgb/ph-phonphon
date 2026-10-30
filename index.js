@@ -4,40 +4,100 @@
 
     const EXTENSION_ID = 'cps-phone-system';
     const MODULE_NAME = 'CharacterPhoneSystem';
+    const STORAGE_KEY = `${EXTENSION_ID}-messages`;
 
     let phoneWindow = null;
     let launcher = null;
     let activeTab = 'messages';
     let phoneView = 'user';
+    let activeConversationKey = null;
     let isMinimized = false;
     let dragState = null;
-
     let launcherDragState = null;
     let launcherWasDragged = false;
+    const generatingReplies = new Set();
 
     const TABS = {
-        messages: { label: 'ข้อความ', icon: '✉' },
-        calls: { label: 'โทรศัพท์', icon: '☎' },
-        contacts: { label: 'รายชื่อ', icon: '♙' },
+        messages: { label: 'ข้อความ' },
+        calls: { label: 'โทรศัพท์' },
+        contacts: { label: 'รายชื่อ' },
     };
 
+    // =========================================
+    // Context and Storage
+    // =========================================
+
     function getContext() {
-        if (!window.SillyTavern?.getContext) return null;
-        return window.SillyTavern.getContext();
+        return window.SillyTavern?.getContext?.() || null;
+    }
+
+    function getCurrentCharacter() {
+        const context = getContext();
+
+        if (!context || context.characterId == null) return null;
+
+        return context.characters?.[context.characterId] || null;
     }
 
     function getCurrentChatName() {
+        const character = getCurrentCharacter();
+        if (character) return character.name || 'ตัวละคร';
+
         const context = getContext();
-
-        if (!context) return 'ไม่ได้เชื่อมต่อแชต';
-
-        if (context.characterId !== undefined && context.characterId !== null) {
-            return context.characters?.[context.characterId]?.name || 'ตัวละคร';
-        }
-
-        if (context.groupId) return 'Group Chat';
+        if (context?.groupId) return 'Group Chat';
 
         return 'ไม่ได้เลือกตัวละคร';
+    }
+
+    function getConversationKey() {
+        const character = getCurrentCharacter();
+        if (!character) return null;
+
+        // Avatar filename is generally more stable than character index.
+        return `character:${character.avatar || character.name}`;
+    }
+
+    function loadMessages() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) return {};
+
+            const parsed = JSON.parse(saved);
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (error) {
+            console.warn(`[${MODULE_NAME}] Cannot load messages.`, error);
+            return {};
+        }
+    }
+
+    let conversations = loadMessages();
+
+    function saveMessages() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+        } catch (error) {
+            console.error(`[${MODULE_NAME}] Cannot save messages.`, error);
+        }
+    }
+
+    function getConversation(key = getConversationKey()) {
+        if (!key) return null;
+
+        if (!Array.isArray(conversations[key])) {
+            conversations[key] = [];
+        }
+
+        return conversations[key];
+    }
+
+    function createMessage(sender, text, status = 'Delivered') {
+        return {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            sender,
+            text,
+            status,
+            timestamp: Date.now(),
+        };
     }
 
     // =========================================
@@ -84,17 +144,20 @@
 
             if (!launcherWasDragged) return;
 
-            const maxLeft = window.innerWidth - launcher.offsetWidth;
-            const maxTop = window.innerHeight - launcher.offsetHeight;
-
             const left = Math.max(
                 0,
-                Math.min(maxLeft, launcherDragState.left + dx)
+                Math.min(
+                    window.innerWidth - launcher.offsetWidth,
+                    launcherDragState.left + dx
+                )
             );
 
             const top = Math.max(
                 0,
-                Math.min(maxTop, launcherDragState.top + dy)
+                Math.min(
+                    window.innerHeight - launcher.offsetHeight,
+                    launcherDragState.top + dy
+                )
             );
 
             launcher.style.left = `${left}px`;
@@ -108,7 +171,6 @@
             if (event.pointerId !== launcherDragState.pointerId) return;
 
             if (launcherWasDragged) saveLauncherPosition();
-
             launcherDragState = null;
         });
 
@@ -140,10 +202,7 @@
         try {
             localStorage.setItem(
                 `${EXTENSION_ID}-launcher-position`,
-                JSON.stringify({
-                    left: rect.left,
-                    top: rect.top,
-                })
+                JSON.stringify({ left: rect.left, top: rect.top })
             );
         } catch (error) {
             console.warn(`[${MODULE_NAME}] Cannot save launcher position.`, error);
@@ -167,21 +226,18 @@
                 typeof position.top !== 'number'
             ) return;
 
-            const left = Math.max(
+            launcher.style.left = `${Math.max(
                 0,
                 Math.min(position.left, window.innerWidth - launcher.offsetWidth)
-            );
+            )}px`;
 
-            const top = Math.max(
+            launcher.style.top = `${Math.max(
                 0,
                 Math.min(position.top, window.innerHeight - launcher.offsetHeight)
-            );
+            )}px`;
 
-            launcher.style.left = `${left}px`;
-            launcher.style.top = `${top}px`;
             launcher.style.right = 'auto';
             launcher.style.bottom = 'auto';
-
         } catch (error) {
             console.warn(`[${MODULE_NAME}] Cannot restore launcher position.`, error);
         }
@@ -235,7 +291,6 @@
                             <div class="cps-greeting">YOUR PHONE</div>
                             <h2 class="cps-page-title">ข้อความ</h2>
                         </div>
-
                         <span class="cps-current-chat"></span>
                     </div>
 
@@ -274,6 +329,7 @@
         phoneWindow.querySelectorAll('.cps-nav-button')
             .forEach(button => {
                 button.addEventListener('click', () => {
+                    activeConversationKey = null;
                     switchTab(button.dataset.tab);
                 });
             });
@@ -306,7 +362,6 @@
 
         phoneWindow.classList.remove('cps-visible');
         phoneWindow.classList.remove('cps-minimized');
-
         isMinimized = false;
     }
 
@@ -320,20 +375,20 @@
     function togglePhone() {
         if (!phoneWindow || !phoneWindow.classList.contains('cps-visible')) {
             openPhone();
-            return;
+        } else {
+            closePhone();
         }
-
-        closePhone();
     }
 
     // =========================================
-    // Phone View Switching
+    // View Switching
     // =========================================
 
     function switchPhoneView(view) {
         if (view !== 'user' && view !== 'character') return;
 
         phoneView = view;
+        activeConversationKey = null;
         renderPage();
     }
 
@@ -367,7 +422,7 @@
     }
 
     // =========================================
-    // Navigation
+    // Navigation and Rendering
     // =========================================
 
     function switchTab(tab) {
@@ -384,7 +439,10 @@
         const content = phoneWindow.querySelector('.cps-content');
         const currentChat = phoneWindow.querySelector('.cps-current-chat');
 
-        title.textContent = TABS[activeTab].label;
+        title.textContent = activeTab === 'messages' && activeConversationKey
+            ? getCurrentChatName()
+            : TABS[activeTab].label;
+
         currentChat.textContent = getCurrentChatName();
 
         updatePhoneSwitcher();
@@ -397,17 +455,19 @@
         });
 
         if (activeTab === 'messages') {
-            renderMessagesPage(content);
+            if (phoneView === 'character') {
+                renderCharacterMessages(content);
+            } else if (activeConversationKey) {
+                renderConversation(content);
+            } else {
+                renderMessagesPage(content);
+            }
         } else if (activeTab === 'calls') {
             renderCallsPage(content);
         } else if (activeTab === 'contacts') {
             renderContactsPage(content);
         }
     }
-
-    // =========================================
-    // Empty State
-    // =========================================
 
     function renderEmptyState(container, iconText, headingText, descriptionText) {
         container.replaceChildren();
@@ -430,26 +490,330 @@
     }
 
     // =========================================
-    // Messages
+    // Private Messages - Conversation List
     // =========================================
 
     function renderMessagesPage(container) {
-        if (phoneView === 'character') {
+        container.replaceChildren();
+
+        const character = getCurrentCharacter();
+        const key = getConversationKey();
+
+        if (!character || !key) {
             renderEmptyState(
                 container,
-                '◉',
-                'Character Phone',
-                'ข้อความของตัวละครจะแสดงที่นี่ในโหมดดูอย่างเดียว เมื่อมีข้อมูลพร้อมใช้งาน'
+                '✉',
+                'ยังไม่มีแชต',
+                'เลือกแชตตัวละครแบบ 1:1 ก่อน จึงจะเริ่มใช้ข้อความส่วนตัวได้'
             );
             return;
         }
 
+        const messages = getConversation(key);
+        const lastMessage = messages[messages.length - 1];
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'cps-conversation-card';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'cps-contact-avatar';
+        avatar.textContent = (character.name || '?').charAt(0).toUpperCase();
+
+        const info = document.createElement('div');
+        info.className = 'cps-contact-info';
+
+        const name = document.createElement('div');
+        name.className = 'cps-contact-name';
+        name.textContent = character.name || 'ตัวละคร';
+
+        const preview = document.createElement('div');
+        preview.className = 'cps-conversation-preview';
+        preview.textContent = lastMessage
+            ? lastMessage.text
+            : 'เริ่มบทสนทนา';
+
+        info.append(name, preview);
+        card.append(avatar, info);
+
+        card.addEventListener('click', () => {
+            openConversation(key);
+        });
+
+        container.appendChild(card);
+
+        const hint = document.createElement('p');
+        hint.className = 'cps-contacts-note';
+        hint.textContent =
+            'ห้องสนทนานี้เป็นพื้นที่แยกจากแชตหลัก ข้อความจะไม่ถูกส่งเข้าแชตหลักโดยตรง';
+
+        container.appendChild(hint);
+    }
+
+    function renderCharacterMessages(container) {
         renderEmptyState(
             container,
-            '✉',
-            'ยังไม่มีข้อความ',
-            'ข้อความส่วนตัวของคุณจะแสดงที่นี่'
+            '◉',
+            'Character Phone',
+            'ข้อความของตัวละครจะแสดงที่นี่ในโหมดดูอย่างเดียว เมื่อระบบมีข้อมูลมือถือของตัวละคร'
         );
+    }
+
+    function openConversation(key) {
+        if (phoneView !== 'user') return;
+
+        activeConversationKey = key;
+
+        const messages = getConversation(key);
+
+        // Mark incoming messages as read only when the conversation is opened.
+        messages.forEach(message => {
+            if (message.sender === 'character') {
+                message.status = 'Read';
+            }
+        });
+
+        saveMessages();
+        renderPage();
+    }
+
+    // =========================================
+    // Private Messages - Conversation Thread
+    // =========================================
+
+    function renderConversation(container) {
+        container.replaceChildren();
+
+        const key = activeConversationKey;
+        const messages = getConversation(key);
+
+        if (!key || !messages) {
+            activeConversationKey = null;
+            renderMessagesPage(container);
+            return;
+        }
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'cps-chat-toolbar';
+
+        const backButton = document.createElement('button');
+        backButton.type = 'button';
+        backButton.className = 'cps-chat-back';
+        backButton.textContent = '← กลับ';
+        backButton.addEventListener('click', () => {
+            activeConversationKey = null;
+            renderPage();
+        });
+
+        const contactName = document.createElement('strong');
+        contactName.textContent = getCurrentChatName();
+
+        toolbar.append(backButton, contactName);
+
+        const thread = document.createElement('div');
+        thread.className = 'cps-message-thread';
+
+        messages.forEach(message => {
+            const row = document.createElement('div');
+            row.className = `cps-message-row ${
+                message.sender === 'user' ? 'cps-message-outgoing' : 'cps-message-incoming'
+            }`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'cps-message-bubble';
+            bubble.textContent = message.text;
+
+            row.appendChild(bubble);
+
+            const meta = document.createElement('div');
+            meta.className = 'cps-message-meta';
+
+            const time = new Date(message.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+
+            meta.textContent = message.sender === 'user'
+                ? `${time} · ${message.status || 'Sent'}`
+                : time;
+
+            row.appendChild(meta);
+            thread.appendChild(row);
+        });
+
+        if (generatingReplies.has(key)) {
+            const loading = document.createElement('div');
+            loading.className = 'cps-generating-indicator';
+            loading.textContent = `${getCurrentChatName()} กำลังพิมพ์…`;
+            thread.appendChild(loading);
+        }
+
+        const composer = document.createElement('form');
+        composer.className = 'cps-message-composer';
+
+        const input = document.createElement('textarea');
+        input.className = 'cps-message-input';
+        input.placeholder = 'พิมพ์ข้อความ…';
+        input.rows = 1;
+        input.maxLength = 4000;
+        input.disabled = generatingReplies.has(key);
+
+        const sendButton = document.createElement('button');
+        sendButton.type = 'submit';
+        sendButton.className = 'cps-message-send';
+        sendButton.textContent = 'ส่ง';
+        sendButton.disabled = generatingReplies.has(key);
+
+        composer.append(input, sendButton);
+
+        composer.addEventListener('submit', event => {
+            event.preventDefault();
+
+            const text = input.value.trim();
+            if (!text || generatingReplies.has(key)) return;
+
+            sendPrivateMessage(key, text);
+        });
+
+        container.append(toolbar, thread, composer);
+
+        thread.scrollTop = thread.scrollHeight;
+    }
+
+    async function sendPrivateMessage(key, text) {
+        if (phoneView !== 'user') return;
+        if (!key || generatingReplies.has(key)) return;
+
+        const messages = getConversation(key);
+        if (!messages) return;
+
+        messages.push(createMessage('user', text, 'Delivered'));
+        saveMessages();
+        renderPage();
+
+        await generateCharacterReply(key);
+    }
+
+    // =========================================
+    // Private Messages - AI Reply
+    // =========================================
+
+    async function generateCharacterReply(key) {
+        const context = getContext();
+
+        if (!context || typeof context.generateQuietPrompt !== 'function') {
+            showGenerationError(key, 'ไม่พบระบบสร้างข้อความของ SillyTavern');
+            return;
+        }
+
+        const character = getCurrentCharacter();
+
+        if (!character || key !== getConversationKey()) {
+            showGenerationError(key, 'ไม่พบตัวละครที่เชื่อมกับห้องสนทนานี้');
+            return;
+        }
+
+        const characterName = character.name || 'Character';
+        const messages = getConversation(key);
+
+        if (!messages?.length) return;
+
+        generatingReplies.add(key);
+        renderPage();
+
+        const transcript = messages.slice(-20).map(message => {
+            const speaker = message.sender === 'user' ? 'User' : characterName;
+            return `${speaker}: ${message.text}`;
+        }).join('\n');
+
+        const quietPrompt = `
+You are generating a private phone message from the character "${characterName}".
+
+This is a separate 1-to-1 private message conversation.
+Reply as the character, using the character information and personality
+available in the current SillyTavern context.
+
+PRIVATE MESSAGE HISTORY:
+${transcript}
+
+STRICT RULES:
+- Output only the exact message the character sends.
+- Do not write narration, actions, thoughts, stage directions, or scene descriptions.
+- Do not write the user's dialogue or actions.
+- Do not mention prompts, AI, roleplay instructions, or this system.
+- Keep the reply natural and appropriate to the character's personality.
+- Do not invent that the character has read, seen, or done something unless
+  it is established in the conversation.
+- Reply as a private message, not as a continuation of the main chat.
+- Keep the response reasonably concise.
+
+Write the character's next private message now.
+        `.trim();
+
+        try {
+            const result = await context.generateQuietPrompt({ quietPrompt });
+
+            let reply = typeof result === 'string'
+                ? result
+                : result?.text || result?.content || '';
+
+            reply = String(reply)
+                .replace(/^\s+|\s+$/g, '')
+                .replace(/^["“]|["”]$/g, '')
+                .trim();
+
+            if (!reply) {
+                throw new Error('The model returned an empty message.');
+            }
+
+            // Prevent accidental oversized responses.
+            reply = reply.slice(0, 8000);
+
+            const currentMessages = getConversation(key);
+
+            currentMessages.push(
+                createMessage('character', reply, 'Delivered')
+            );
+
+            saveMessages();
+
+        } catch (error) {
+            console.error(`[${MODULE_NAME}] Private message generation failed.`, error);
+
+            const currentMessages = getConversation(key);
+
+            currentMessages.push(
+                createMessage(
+                    'system',
+                    'ไม่สามารถสร้างข้อความตอบกลับได้ ตรวจสอบการเชื่อมต่อ API แล้วลองส่งข้อความใหม่',
+                    'Error'
+                )
+            );
+
+            saveMessages();
+
+        } finally {
+            generatingReplies.delete(key);
+
+            if (
+                phoneWindow &&
+                phoneWindow.classList.contains('cps-visible') &&
+                phoneView === 'user' &&
+                activeTab === 'messages' &&
+                activeConversationKey === key
+            ) {
+                renderPage();
+            }
+        }
+    }
+
+    function showGenerationError(key, message) {
+        const messages = getConversation(key);
+        if (!messages) return;
+
+        messages.push(createMessage('system', message, 'Error'));
+        saveMessages();
+        renderPage();
     }
 
     // =========================================
@@ -471,7 +835,7 @@
             container,
             '☎',
             'ประวัติการโทร',
-            'ยังไม่มีรายการโทรศัพท์'
+            'ระบบโทรศัพท์ยังอยู่ระหว่างพัฒนา'
         );
     }
 
@@ -492,36 +856,35 @@
             return;
         }
 
-        const context = getContext();
-        const characterName = getCurrentChatName();
+        const character = getCurrentCharacter();
 
-        if (
-            !context ||
-            context.characterId === undefined ||
-            context.characterId === null
-        ) {
+        if (!character) {
             renderEmptyState(
                 container,
                 '♙',
                 'ยังไม่มีรายชื่อ',
-                'เลือกแชตตัวละครก่อน รายชื่อที่รู้จักจะแสดงที่นี่'
+                'เลือกแชตตัวละครแบบ 1:1 ก่อน'
             );
             return;
         }
 
-        const contactCard = document.createElement('div');
-        contactCard.className = 'cps-contact-card';
+        const key = getConversationKey();
+        const messages = getConversation(key);
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'cps-contact-card cps-contact-card-button';
 
         const avatar = document.createElement('div');
         avatar.className = 'cps-contact-avatar';
-        avatar.textContent = characterName.charAt(0).toUpperCase() || '?';
+        avatar.textContent = (character.name || '?').charAt(0).toUpperCase();
 
         const info = document.createElement('div');
         info.className = 'cps-contact-info';
 
         const name = document.createElement('div');
         name.className = 'cps-contact-name';
-        name.textContent = characterName;
+        name.textContent = character.name || 'ตัวละคร';
 
         const identity = document.createElement('div');
         identity.className = 'cps-contact-status';
@@ -529,12 +892,19 @@
 
         const access = document.createElement('div');
         access.className = 'cps-contact-access';
-        access.textContent = 'ยังไม่มีข้อมูลช่องทางติดต่อ';
+        access.textContent = messages.length
+            ? 'มีประวัติข้อความส่วนตัว'
+            : 'ยังไม่มีประวัติข้อความ';
 
         info.append(name, identity, access);
-        contactCard.append(avatar, info);
+        card.append(avatar, info);
 
-        container.appendChild(contactCard);
+        card.addEventListener('click', () => {
+            activeTab = 'messages';
+            openConversation(key);
+        });
+
+        container.appendChild(card);
 
         const note = document.createElement('p');
         note.className = 'cps-contacts-note';
@@ -554,16 +924,14 @@
         const clock = phoneWindow.querySelector('.cps-clock');
         if (!clock) return;
 
-        const now = new Date();
-
-        clock.textContent = now.toLocaleTimeString([], {
+        clock.textContent = new Date().toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
         });
     }
 
     // =========================================
-    // Phone Window Dragging
+    // Window Dragging
     // =========================================
 
     function setupDragging() {
@@ -587,20 +955,20 @@
         header.addEventListener('pointermove', event => {
             if (!dragState) return;
 
-            const deltaX = event.clientX - dragState.startX;
-            const deltaY = event.clientY - dragState.startY;
-
-            const maxLeft = window.innerWidth - phoneWindow.offsetWidth;
-            const maxTop = window.innerHeight - 60;
-
             const left = Math.max(
                 0,
-                Math.min(maxLeft, dragState.left + deltaX)
+                Math.min(
+                    window.innerWidth - phoneWindow.offsetWidth,
+                    dragState.left + event.clientX - dragState.startX
+                )
             );
 
             const top = Math.max(
                 0,
-                Math.min(maxTop, dragState.top + deltaY)
+                Math.min(
+                    window.innerHeight - 60,
+                    dragState.top + event.clientY - dragState.startY
+                )
             );
 
             phoneWindow.style.left = `${left}px`;
@@ -621,7 +989,7 @@
     }
 
     // =========================================
-    // Phone Window Resizing
+    // Window Resizing
     // =========================================
 
     function setupResizing() {
@@ -680,7 +1048,7 @@
     }
 
     // =========================================
-    // Save / Restore Phone Position
+    // Save / Restore Window Position
     // =========================================
 
     function saveWindowPosition() {
@@ -688,17 +1056,15 @@
 
         const rect = phoneWindow.getBoundingClientRect();
 
-        const position = {
-            left: rect.left,
-            top: rect.top,
-            width: rect.width,
-            height: rect.height,
-        };
-
         try {
             localStorage.setItem(
                 `${EXTENSION_ID}-position`,
-                JSON.stringify(position)
+                JSON.stringify({
+                    left: rect.left,
+                    top: rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                })
             );
         } catch (error) {
             console.warn(`[${MODULE_NAME}] Cannot save window position.`, error);
@@ -736,7 +1102,6 @@
 
             phoneWindow.style.right = 'auto';
             phoneWindow.style.bottom = 'auto';
-
         } catch (error) {
             console.warn(`[${MODULE_NAME}] Cannot restore window position.`, error);
         }
@@ -747,7 +1112,11 @@
     // =========================================
 
     function handleChatChanged() {
-        if (phoneWindow) renderPage();
+        activeConversationKey = null;
+
+        if (phoneWindow) {
+            renderPage();
+        }
     }
 
     function initialize() {
