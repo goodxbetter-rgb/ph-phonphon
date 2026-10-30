@@ -41,11 +41,15 @@
     color: var(--cps-text);
 
     font-size: 21px;
-    cursor: pointer;
+    cursor: grab;
 
     box-shadow: var(--cps-shadow);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 
     transition:
         transform 0.2s ease,
@@ -60,6 +64,7 @@
 }
 
 .cps-launcher:active {
+    cursor: grabbing;
     transform: scale(0.94);
 }
 
@@ -268,6 +273,57 @@
 }
 
 /* =========================================
+   Phone View Switcher
+========================================= */
+
+.cps-phone-switcher {
+    flex: 0 0 auto;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+
+    padding: 10px 14px;
+
+    border-bottom: 1px solid var(--cps-border);
+}
+
+.cps-phone-switch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    padding: 10px 6px;
+
+    border: 1px solid var(--cps-border);
+    border-radius: 10px;
+
+    background: var(--cps-glass);
+    color: var(--cps-text);
+
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        opacity 0.2s ease;
+}
+
+.cps-phone-switch:hover {
+    opacity: 1 !important;
+    background: var(--cps-glass-hover);
+}
+
+.cps-phone-switch.cps-active {
+    font-weight: 700;
+}
+
+/* =========================================
    Main Page
 ========================================= */
 
@@ -391,6 +447,7 @@
 
     color: var(--cps-muted);
     font-size: 11px;
+    line-height: 1.6;
 }
 
 /* =========================================
@@ -404,7 +461,7 @@
     align-items: center;
     justify-content: space-around;
 
-    padding: 5px 20px 8px;
+    padding: 5px 10px 8px;
 
     border-top: 1px solid var(--cps-border);
 
@@ -412,7 +469,7 @@
 }
 
 .cps-nav-button {
-    min-width: 75px;
+    min-width: 65px;
 
     display: flex;
     flex-direction: column;
@@ -420,7 +477,7 @@
     justify-content: center;
     gap: 4px;
 
-    padding: 7px 12px;
+    padding: 7px 10px;
 
     border: 0;
     border-radius: 12px;
@@ -448,6 +505,78 @@
 .cps-nav-icon {
     font-size: 19px;
     line-height: 1;
+}
+
+/* =========================================
+   Contacts
+========================================= */
+
+.cps-contact-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 12px;
+    margin-bottom: 10px;
+
+    border: 1px solid var(--cps-border);
+    border-radius: 12px;
+
+    background: var(--cps-glass);
+}
+
+.cps-contact-avatar {
+    width: 44px;
+    height: 44px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: var(--cps-accent);
+    color: #ffffff;
+
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.cps-contact-info {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cps-contact-name {
+    color: var(--cps-text);
+    font-size: 14px;
+    font-weight: 700;
+
+    overflow-wrap: anywhere;
+}
+
+.cps-contact-status {
+    color: var(--cps-muted);
+    font-size: 11px;
+}
+
+.cps-contact-access {
+    color: var(--cps-muted);
+    font-size: 11px;
+    opacity: 0.75;
+}
+
+.cps-contacts-note {
+    margin: 12px 4px;
+
+    color: var(--cps-muted);
+    font-size: 11px;
+    line-height: 1.6;
 }
 
 /* =========================================
@@ -499,47 +628,19 @@
         min-height: 0;
     }
 
+    .cps-page {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
 
-.cps-launcher {
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    cursor: grab;
-}
+    .cps-navigation {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
 
-.cps-launcher:active {
-    cursor: grabbing;
-}
-
-/* =========================================
-   Phone View Switcher
-   ========================================= */
-
-.cps-phone-switcher {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    padding: 10px 14px;
-}
-
-.cps-phone-switch {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    padding: 10px 6px;
-    border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,0.25));
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s, opacity 0.2s;
-}
-
-.cps-phone-switch:hover {
-    opacity: 1 !important;
-}
-
-.cps-phone-switch.cps-active {
-    font-weight: 700;
+    .cps-nav-button {
+        min-width: 55px;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
 }
