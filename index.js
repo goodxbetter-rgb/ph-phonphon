@@ -12,13 +12,13 @@
     let isMinimized = false;
     let dragState = null;
 
-    // Launcher dragging
     let launcherDragState = null;
     let launcherWasDragged = false;
 
     const TABS = {
         messages: { label: 'ข้อความ', icon: '✉' },
         calls: { label: 'โทรศัพท์', icon: '☎' },
+        contacts: { label: 'รายชื่อ', icon: '♙' },
     };
 
     function getContext() {
@@ -252,6 +252,11 @@
                         <span class="cps-nav-icon">☎</span>
                         <span>โทรศัพท์</span>
                     </button>
+
+                    <button type="button" class="cps-nav-button" data-tab="contacts">
+                        <span class="cps-nav-icon">♙</span>
+                        <span>รายชื่อ</span>
+                    </button>
                 </nav>
             </div>
 
@@ -395,11 +400,13 @@
             renderMessagesPage(content);
         } else if (activeTab === 'calls') {
             renderCallsPage(content);
+        } else if (activeTab === 'contacts') {
+            renderContactsPage(content);
         }
     }
 
     // =========================================
-    // Empty States
+    // Empty State
     // =========================================
 
     function renderEmptyState(container, iconText, headingText, descriptionText) {
@@ -422,13 +429,17 @@
         container.appendChild(emptyState);
     }
 
+    // =========================================
+    // Messages
+    // =========================================
+
     function renderMessagesPage(container) {
         if (phoneView === 'character') {
             renderEmptyState(
                 container,
                 '◉',
                 'Character Phone',
-                'พื้นที่นี้ใช้สำหรับดูข้อความของตัวละครเท่านั้น ขณะนี้ยังไม่มีข้อมูลให้แสดง'
+                'ข้อความของตัวละครจะแสดงที่นี่ในโหมดดูอย่างเดียว เมื่อมีข้อมูลพร้อมใช้งาน'
             );
             return;
         }
@@ -440,6 +451,10 @@
             'ข้อความส่วนตัวของคุณจะแสดงที่นี่'
         );
     }
+
+    // =========================================
+    // Calls
+    // =========================================
 
     function renderCallsPage(container) {
         if (phoneView === 'character') {
@@ -458,6 +473,75 @@
             'ประวัติการโทร',
             'ยังไม่มีรายการโทรศัพท์'
         );
+    }
+
+    // =========================================
+    // Contacts
+    // =========================================
+
+    function renderContactsPage(container) {
+        container.replaceChildren();
+
+        if (phoneView === 'character') {
+            renderEmptyState(
+                container,
+                '◉',
+                'Character Contacts',
+                'รายชื่อผู้ติดต่อของตัวละครจะแสดงที่นี่ในโหมดดูอย่างเดียว เมื่อมีข้อมูลพร้อมใช้งาน'
+            );
+            return;
+        }
+
+        const context = getContext();
+        const characterName = getCurrentChatName();
+
+        if (
+            !context ||
+            context.characterId === undefined ||
+            context.characterId === null
+        ) {
+            renderEmptyState(
+                container,
+                '♙',
+                'ยังไม่มีรายชื่อ',
+                'เลือกแชตตัวละครก่อน รายชื่อที่รู้จักจะแสดงที่นี่'
+            );
+            return;
+        }
+
+        const contactCard = document.createElement('div');
+        contactCard.className = 'cps-contact-card';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'cps-contact-avatar';
+        avatar.textContent = characterName.charAt(0).toUpperCase() || '?';
+
+        const info = document.createElement('div');
+        info.className = 'cps-contact-info';
+
+        const name = document.createElement('div');
+        name.className = 'cps-contact-name';
+        name.textContent = characterName;
+
+        const identity = document.createElement('div');
+        identity.className = 'cps-contact-status';
+        identity.textContent = 'รู้จักกัน · ตัวละครในแชตปัจจุบัน';
+
+        const access = document.createElement('div');
+        access.className = 'cps-contact-access';
+        access.textContent = 'ยังไม่มีข้อมูลช่องทางติดต่อ';
+
+        info.append(name, identity, access);
+        contactCard.append(avatar, info);
+
+        container.appendChild(contactCard);
+
+        const note = document.createElement('p');
+        note.className = 'cps-contacts-note';
+        note.textContent =
+            'การรู้จักกันไม่ได้หมายความว่ามีเบอร์โทรหรือบัญชีติดต่อกันโดยอัตโนมัติ';
+
+        container.appendChild(note);
     }
 
     // =========================================
@@ -663,9 +747,7 @@
     // =========================================
 
     function handleChatChanged() {
-        if (phoneWindow) {
-            renderPage();
-        }
+        if (phoneWindow) renderPage();
     }
 
     function initialize() {
