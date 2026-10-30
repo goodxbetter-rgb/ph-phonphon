@@ -1,44 +1,506 @@
-.ui-enhancements-toolbar {
+
+/* =========================================
+   Character Phone System
+   Main UI Stylesheet
+========================================= */
+
+:root {
+    --cps-bg: rgba(20, 22, 29, 0.94);
+    --cps-glass: rgba(255, 255, 255, 0.055);
+    --cps-glass-hover: rgba(255, 255, 255, 0.11);
+    --cps-border: rgba(255, 255, 255, 0.13);
+    --cps-text: #f1f1f4;
+    --cps-muted: #999ca8;
+    --cps-accent: #c6a6e8;
+    --cps-accent-soft: rgba(198, 166, 232, 0.15);
+    --cps-green: #76d6a0;
+    --cps-shadow: 0 15px 50px rgba(0, 0, 0, 0.42);
+}
+
+/* =========================================
+   Floating Launcher
+========================================= */
+
+.cps-launcher {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 99990;
+
+    width: 48px;
+    height: 48px;
+
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    width: fit-content;
-    max-width: 100%;
-    margin: 6px 0;
-    padding: 6px 9px;
-    border: 1px solid var(-- SmartThemeBorderColor, rgba(150, 150, 150, 0.35));
-    border-radius: 9px;
-    background: var(--SmartThemeBlurTintColor, rgba(30, 30, 30, 0.82));
-    color: var(--SmartThemeBodyColor, inherit);
-}
+    justify-content: center;
 
-.ui-enhancements-toolbar-label {
-    margin-right: 3px;
-    font-size: 0.82em;
-    opacity: 0.72;
-}
+    border: 1px solid var(--cps-border);
+    border-radius: 50%;
 
-.ui-enhancements-button {
-    min-width: 34px;
-    padding: 5px 10px;
-    border: 1px solid var(--SmartThemeBorderColor, rgba(150, 150, 150, 0.4));
-    border-radius: 6px;
-    background: var(--SmartThemeQuoteColor, rgba(110, 110, 110, 0.18));
-    color: var(--SmartThemeBodyColor, inherit);
-    font: inherit;
-    font-weight: 600;
-    line-height: 1.2;
+    background: rgba(30, 28, 40, 0.88);
+    color: var(--cps-text);
+
+    font-size: 21px;
     cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease;
+
+    box-shadow: var(--cps-shadow);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
-.ui-enhancements-button:hover {
-    background: var(--SmartThemeEmColor, rgba(150, 150, 150, 0.25));
-    border-color: var(--SmartThemeBodyColor, rgba(180, 180, 180, 0.65));
+.cps-launcher:hover {
+    transform: translateY(-3px);
+    background: rgba(65, 54, 82, 0.95);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
 }
 
-.ui-enhancements-button:focus-visible {
-    outline: 2px solid var(--SmartThemeEmColor, currentColor);
-    outline-offset: 2px;
+.cps-launcher:active {
+    transform: scale(0.94);
+}
+
+/* =========================================
+   Phone Window
+========================================= */
+
+.cps-window {
+    position: fixed;
+    top: 100px;
+    left: auto;
+    right: 90px;
+
+    z-index: 99991;
+
+    width: 360px;
+    height: 620px;
+
+    display: none;
+    flex-direction: column;
+
+    overflow: hidden;
+
+    border: 1px solid var(--cps-border);
+    border-radius: 22px;
+
+    background: var(--cps-bg);
+    color: var(--cps-text);
+
+    box-shadow: var(--cps-shadow);
+
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+
+    font-family: inherit;
+    font-size: 14px;
+
+    min-width: 280px;
+    min-height: 400px;
+
+    animation: cps-appear 0.22s ease;
+}
+
+.cps-window.cps-visible {
+    display: flex;
+}
+
+.cps-window.cps-minimized {
+    height: 54px !important;
+    min-height: 54px;
+}
+
+.cps-window.cps-minimized .cps-screen,
+.cps-window.cps-minimized .cps-resize-handle {
+    display: none;
+}
+
+@keyframes cps-appear {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* =========================================
+   Header
+========================================= */
+
+.cps-header {
+    flex: 0 0 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 15px;
+
+    border-bottom: 1px solid var(--cps-border);
+
+    background: rgba(255, 255, 255, 0.035);
+
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+}
+
+.cps-header:active {
+    cursor: grabbing;
+}
+
+.cps-header-info {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.cps-status-dot {
+    width: 7px;
+    height: 7px;
+
+    border-radius: 50%;
+    background: var(--cps-green);
+
+    box-shadow: 0 0 9px rgba(118, 214, 160, 0.65);
+}
+
+.cps-header-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--cps-muted);
+}
+
+.cps-window-controls {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.cps-window-controls button {
+    width: 27px;
+    height: 27px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: 1px solid transparent;
+    border-radius: 8px;
+
+    background: transparent;
+    color: var(--cps-muted);
+
+    font-size: 19px;
+    line-height: 1;
+
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.cps-window-controls button:hover {
+    background: var(--cps-glass-hover);
+    color: var(--cps-text);
+}
+
+.cps-close:hover {
+    background: rgba(230, 90, 90, 0.18) !important;
+    color: #ff8585 !important;
+}
+
+/* =========================================
+   Phone Screen
+========================================= */
+
+.cps-screen {
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+
+    min-height: 0;
+    overflow: hidden;
+
+    background:
+        radial-gradient(
+            circle at 90% 5%,
+            rgba(154, 119, 190, 0.12),
+            transparent 38%
+        ),
+        rgba(15, 16, 22, 0.65);
+}
+
+/* =========================================
+   Top Bar
+========================================= */
+
+.cps-topbar {
+    flex: 0 0 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 18px;
+
+    color: var(--cps-muted);
+    font-size: 11px;
+}
+
+.cps-clock {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.cps-network {
+    font-size: 9px;
+    letter-spacing: 3px;
+    opacity: 0.65;
+}
+
+/* =========================================
+   Main Page
+========================================= */
+
+.cps-page {
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+
+    min-height: 0;
+    padding: 17px 18px 10px;
+
+    overflow: hidden;
+}
+
+.cps-page-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+
+    margin-bottom: 22px;
+}
+
+.cps-greeting {
+    margin-bottom: 5px;
+
+    color: var(--cps-accent);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.cps-page-title {
+    margin: 0;
+
+    color: var(--cps-text);
+    font-size: 24px;
+    font-weight: 650;
+    line-height: 1.2;
+}
+
+.cps-current-chat {
+    max-width: 115px;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    color: var(--cps-muted);
+    font-size: 10px;
+}
+
+/* =========================================
+   Content
+========================================= */
+
+.cps-content {
+    flex: 1;
+
+    min-height: 0;
+    overflow-y: auto;
+
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.cps-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.cps-content::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+/* =========================================
+   Empty State
+========================================= */
+
+.cps-empty-state {
+    min-height: 220px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    text-align: center;
+}
+
+.cps-empty-icon {
+    width: 58px;
+    height: 58px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 15px;
+
+    border: 1px solid var(--cps-border);
+    border-radius: 20px;
+
+    background: var(--cps-accent-soft);
+    color: var(--cps-accent);
+
+    font-size: 25px;
+}
+
+.cps-empty-state h3 {
+    margin: 0 0 7px;
+
+    color: var(--cps-text);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.cps-empty-state p {
+    margin: 0;
+
+    color: var(--cps-muted);
+    font-size: 11px;
+}
+
+/* =========================================
+   Bottom Navigation
+========================================= */
+
+.cps-navigation {
+    flex: 0 0 65px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+
+    padding: 5px 20px 8px;
+
+    border-top: 1px solid var(--cps-border);
+
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.cps-nav-button {
+    min-width: 75px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    padding: 7px 12px;
+
+    border: 0;
+    border-radius: 12px;
+
+    background: transparent;
+    color: var(--cps-muted);
+
+    font-family: inherit;
+    font-size: 10px;
+
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.cps-nav-button:hover {
+    background: var(--cps-glass);
+    color: var(--cps-text);
+}
+
+.cps-nav-button.cps-active {
+    background: var(--cps-accent-soft);
+    color: var(--cps-accent);
+}
+
+.cps-nav-icon {
+    font-size: 19px;
+    line-height: 1;
+}
+
+/* =========================================
+   Resize Handle
+========================================= */
+
+.cps-resize-handle {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+
+    width: 17px;
+    height: 17px;
+
+    cursor: nwse-resize;
+    touch-action: none;
+}
+
+.cps-resize-handle::after {
+    content: '';
+
+    position: absolute;
+    right: 3px;
+    bottom: 3px;
+
+    width: 8px;
+    height: 8px;
+
+    border-right: 2px solid rgba(255, 255, 255, 0.35);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.35);
+    border-radius: 1px;
+}
+
+/* =========================================
+   Responsive
+========================================= */
+
+@media (max-width: 600px) {
+    .cps-window {
+        top: 10px !important;
+        left: 10px !important;
+        right: 10px !important;
+        bottom: 10px !important;
+
+        width: auto !important;
+        height: auto !important;
+
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .cps-launcher {
+        right: 15px;
+        bottom: 15px;
+    }
 }
