@@ -8,6 +8,7 @@
     let phoneWindow = null;
     let launcher = null;
     let activeTab = 'messages';
+    let phoneView = 'user';
     let isMinimized = false;
     let dragState = null;
 
@@ -16,21 +17,12 @@
     let launcherWasDragged = false;
 
     const TABS = {
-        messages: {
-            label: 'ข้อความ',
-            icon: '✉',
-        },
-        calls: {
-            label: 'โทรศัพท์',
-            icon: '☎',
-        },
+        messages: { label: 'ข้อความ', icon: '✉' },
+        calls: { label: 'โทรศัพท์', icon: '☎' },
     };
 
     function getContext() {
-        if (!window.SillyTavern?.getContext) {
-            return null;
-        }
-
+        if (!window.SillyTavern?.getContext) return null;
         return window.SillyTavern.getContext();
     }
 
@@ -43,9 +35,7 @@
             return context.characters?.[context.characterId]?.name || 'ตัวละคร';
         }
 
-        if (context.groupId) {
-            return 'Group Chat';
-        }
+        if (context.groupId) return 'Group Chat';
 
         return 'ไม่ได้เลือกตัวละคร';
     }
@@ -64,7 +54,6 @@
         launcher.textContent = '☎';
         launcher.title = 'เปิด Character Phone System';
 
-        // เริ่มลาก
         launcher.addEventListener('pointerdown', event => {
             if (event.button !== 0) return;
 
@@ -79,11 +68,9 @@
             };
 
             launcherWasDragged = false;
-
             launcher.setPointerCapture(event.pointerId);
         });
 
-        // เคลื่อนย้ายปุ่ม
         launcher.addEventListener('pointermove', event => {
             if (!launcherDragState) return;
             if (event.pointerId !== launcherDragState.pointerId) return;
@@ -116,14 +103,11 @@
             launcher.style.bottom = 'auto';
         });
 
-        // จบการลาก
         launcher.addEventListener('pointerup', event => {
             if (!launcherDragState) return;
             if (event.pointerId !== launcherDragState.pointerId) return;
 
-            if (launcherWasDragged) {
-                saveLauncherPosition();
-            }
+            if (launcherWasDragged) saveLauncherPosition();
 
             launcherDragState = null;
         });
@@ -133,7 +117,6 @@
             launcherWasDragged = false;
         });
 
-        // คลิกเปิดมือถือ แต่ไม่เปิดเมื่อเพิ่งลากปุ่ม
         launcher.addEventListener('click', event => {
             if (launcherWasDragged) {
                 event.preventDefault();
@@ -146,7 +129,6 @@
         });
 
         document.body.appendChild(launcher);
-
         restoreLauncherPosition();
     }
 
@@ -183,24 +165,16 @@
             if (
                 typeof position.left !== 'number' ||
                 typeof position.top !== 'number'
-            ) {
-                return;
-            }
+            ) return;
 
             const left = Math.max(
                 0,
-                Math.min(
-                    position.left,
-                    window.innerWidth - launcher.offsetWidth
-                )
+                Math.min(position.left, window.innerWidth - launcher.offsetWidth)
             );
 
             const top = Math.max(
                 0,
-                Math.min(
-                    position.top,
-                    window.innerHeight - launcher.offsetHeight
-                )
+                Math.min(position.top, window.innerHeight - launcher.offsetHeight)
             );
 
             launcher.style.left = `${left}px`;
@@ -232,17 +206,8 @@
                 </div>
 
                 <div class="cps-window-controls">
-                    <button
-                        type="button"
-                        class="cps-minimize"
-                        title="ย่อหน้าต่าง"
-                    >−</button>
-
-                    <button
-                        type="button"
-                        class="cps-close"
-                        title="ปิดหน้าต่าง"
-                    >×</button>
+                    <button type="button" class="cps-minimize" title="ย่อหน้าต่าง">−</button>
+                    <button type="button" class="cps-close" title="ปิดหน้าต่าง">×</button>
                 </div>
             </header>
 
@@ -252,10 +217,22 @@
                     <span class="cps-network">● ● ●</span>
                 </div>
 
+                <div class="cps-phone-switcher">
+                    <button type="button" class="cps-phone-switch" data-view="user">
+                        <span>▣</span>
+                        <span>Your Phone</span>
+                    </button>
+
+                    <button type="button" class="cps-phone-switch" data-view="character">
+                        <span>◉</span>
+                        <span>Character Phone</span>
+                    </button>
+                </div>
+
                 <div class="cps-page">
                     <div class="cps-page-heading">
                         <div>
-                            <div class="cps-greeting">CHARACTER PHONE</div>
+                            <div class="cps-greeting">YOUR PHONE</div>
                             <h2 class="cps-page-title">ข้อความ</h2>
                         </div>
 
@@ -266,20 +243,12 @@
                 </div>
 
                 <nav class="cps-navigation">
-                    <button
-                        type="button"
-                        class="cps-nav-button"
-                        data-tab="messages"
-                    >
+                    <button type="button" class="cps-nav-button" data-tab="messages">
                         <span class="cps-nav-icon">✉</span>
                         <span>ข้อความ</span>
                     </button>
 
-                    <button
-                        type="button"
-                        class="cps-nav-button"
-                        data-tab="calls"
-                    >
+                    <button type="button" class="cps-nav-button" data-tab="calls">
                         <span class="cps-nav-icon">☎</span>
                         <span>โทรศัพท์</span>
                     </button>
@@ -301,6 +270,13 @@
             .forEach(button => {
                 button.addEventListener('click', () => {
                     switchTab(button.dataset.tab);
+                });
+            });
+
+        phoneWindow.querySelectorAll('.cps-phone-switch')
+            .forEach(button => {
+                button.addEventListener('click', () => {
+                    switchPhoneView(button.dataset.view);
                 });
             });
 
@@ -346,6 +322,46 @@
     }
 
     // =========================================
+    // Phone View Switching
+    // =========================================
+
+    function switchPhoneView(view) {
+        if (view !== 'user' && view !== 'character') return;
+
+        phoneView = view;
+        renderPage();
+    }
+
+    function updatePhoneSwitcher() {
+        if (!phoneWindow) return;
+
+        phoneWindow.querySelectorAll('.cps-phone-switch').forEach(button => {
+            const isActive = button.dataset.view === phoneView;
+
+            button.classList.toggle('cps-active', isActive);
+            button.setAttribute('aria-pressed', String(isActive));
+
+            button.style.background = isActive
+                ? 'var(--SmartThemeQuoteColor, #8b75b5)'
+                : 'var(--SmartThemeBlurTintColor, rgba(128,128,128,0.12))';
+
+            button.style.color = isActive
+                ? '#ffffff'
+                : 'var(--SmartThemeBodyColor, inherit)';
+
+            button.style.opacity = isActive ? '1' : '0.75';
+        });
+
+        const greeting = phoneWindow.querySelector('.cps-greeting');
+
+        if (greeting) {
+            greeting.textContent = phoneView === 'user'
+                ? 'YOUR PHONE'
+                : 'CHARACTER PHONE · VIEW ONLY';
+        }
+    }
+
+    // =========================================
     // Navigation
     // =========================================
 
@@ -366,6 +382,8 @@
         title.textContent = TABS[activeTab].label;
         currentChat.textContent = getCurrentChatName();
 
+        updatePhoneSwitcher();
+
         phoneWindow.querySelectorAll('.cps-nav-button').forEach(button => {
             button.classList.toggle(
                 'cps-active',
@@ -380,7 +398,11 @@
         }
     }
 
-    function renderMessagesPage(container) {
+    // =========================================
+    // Empty States
+    // =========================================
+
+    function renderEmptyState(container, iconText, headingText, descriptionText) {
         container.replaceChildren();
 
         const emptyState = document.createElement('div');
@@ -388,36 +410,54 @@
 
         const icon = document.createElement('div');
         icon.className = 'cps-empty-icon';
-        icon.textContent = '✉';
+        icon.textContent = iconText;
 
         const heading = document.createElement('h3');
-        heading.textContent = 'ยังไม่มีข้อความ';
+        heading.textContent = headingText;
 
         const description = document.createElement('p');
-        description.textContent = 'ข้อความส่วนตัวจะแสดงที่นี่';
+        description.textContent = descriptionText;
 
         emptyState.append(icon, heading, description);
         container.appendChild(emptyState);
     }
 
+    function renderMessagesPage(container) {
+        if (phoneView === 'character') {
+            renderEmptyState(
+                container,
+                '◉',
+                'Character Phone',
+                'พื้นที่นี้ใช้สำหรับดูข้อความของตัวละครเท่านั้น ขณะนี้ยังไม่มีข้อมูลให้แสดง'
+            );
+            return;
+        }
+
+        renderEmptyState(
+            container,
+            '✉',
+            'ยังไม่มีข้อความ',
+            'ข้อความส่วนตัวของคุณจะแสดงที่นี่'
+        );
+    }
+
     function renderCallsPage(container) {
-        container.replaceChildren();
+        if (phoneView === 'character') {
+            renderEmptyState(
+                container,
+                '◉',
+                'Character Phone',
+                'ประวัติการโทรของตัวละครจะแสดงที่นี่ในโหมดดูอย่างเดียว'
+            );
+            return;
+        }
 
-        const emptyState = document.createElement('div');
-        emptyState.className = 'cps-empty-state';
-
-        const icon = document.createElement('div');
-        icon.className = 'cps-empty-icon';
-        icon.textContent = '☎';
-
-        const heading = document.createElement('h3');
-        heading.textContent = 'ประวัติการโทร';
-
-        const description = document.createElement('p');
-        description.textContent = 'ยังไม่มีรายการโทรศัพท์';
-
-        emptyState.append(icon, heading, description);
-        container.appendChild(emptyState);
+        renderEmptyState(
+            container,
+            '☎',
+            'ประวัติการโทร',
+            'ยังไม่มีรายการโทรศัพท์'
+        );
     }
 
     // =========================================
@@ -526,12 +566,18 @@
 
             const width = Math.max(
                 280,
-                Math.min(window.innerWidth, startWidth + event.clientX - startX)
+                Math.min(
+                    window.innerWidth,
+                    startWidth + event.clientX - startX
+                )
             );
 
             const height = Math.max(
                 400,
-                Math.min(window.innerHeight, startHeight + event.clientY - startY)
+                Math.min(
+                    window.innerHeight,
+                    startHeight + event.clientY - startY
+                )
             );
 
             phoneWindow.style.width = `${width}px`;
@@ -589,9 +635,7 @@
                 typeof position.top !== 'number' ||
                 typeof position.width !== 'number' ||
                 typeof position.height !== 'number'
-            ) {
-                return;
-            }
+            ) return;
 
             phoneWindow.style.left = `${Math.max(
                 0,
@@ -608,6 +652,7 @@
 
             phoneWindow.style.right = 'auto';
             phoneWindow.style.bottom = 'auto';
+
         } catch (error) {
             console.warn(`[${MODULE_NAME}] Cannot restore window position.`, error);
         }
